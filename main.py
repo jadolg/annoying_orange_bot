@@ -64,7 +64,7 @@ def get_reminders(msg, user, channel_id):
     result = ''
     for event in event_list:
         time_for_next_event = parse_next_event_from_string(event['msg'])
-        result += f"*{event['id']}* " \
+        result += f" - *{event['id']}* " \
                   f"remind *{event['who']}* " \
                   f"to {event['msg']} " \
                   f"[next execution: *{datetime.datetime.fromtimestamp(time_for_next_event)}*] " \
