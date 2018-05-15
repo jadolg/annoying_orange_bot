@@ -1,6 +1,5 @@
 import os
 import sched
-
 import time
 import uuid
 from threading import Thread
@@ -45,7 +44,10 @@ def add_reminder(msg, user, channel_id):
 def post_reminder(who, what, user, channel_id, event_id):
     users = get_users_str(who=who, user=user)
     what_without_when = str(what).replace(get_when(what), '')
-    bot.send_message(f'{" ".join(users)}, {user} wants you to remember to {what_without_when}', channel_id)
+    if not users:
+        bot.send_message(f'{user} wants you @all to remember to {what_without_when}', channel_id)
+    else:
+        bot.send_message(f'{" ".join(users)}, {user} wants you to remember to {what_without_when}', channel_id)
 
     for event in event_list:
         if str(event_id) == str(event['id']):
@@ -65,7 +67,7 @@ def get_reminders(msg, user, channel_id):
     for event in event_list:
         time_for_next_event = parse_next_event_from_string(event['msg'])
         result += f" - *{event['id']}* " \
-                  f"remind *{event['who']}* " \
+                  f"remind {event['who']} " \
                   f"to {event['msg']} " \
                   f"[next execution: *{datetime.datetime.fromtimestamp(time_for_next_event)}*] " \
                   f"added by *{event['user']}*\n"
