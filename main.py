@@ -3,9 +3,11 @@ import sched
 
 import time
 import uuid
+from threading import Thread
 
 from RocketChatBot import RocketChatBot
 from future.backports import datetime
+from pymongo import MongoClient
 
 from dateparser import parse_next_event_from_string, is_event_recurring
 from str_util import get_users_str, get_when
@@ -13,12 +15,17 @@ from str_util import get_users_str, get_when
 bot_name = os.environ['BOTNAME']
 bot_password = os.environ['BOTPASSWORD']
 server_url = os.environ['SERVERURL']
+db_host = os.environ['DBHOST']
+db_port = int(os.environ['DBPORT'])
 
 event_list = []
 
 SCHEDULER_EVENTS_PRIORITY = 1
 
 bot = RocketChatBot(bot_name, bot_password, server_url)
+
+db_client = MongoClient(db_host, db_port)
+reminders = db_client['events'].reminders
 
 error_msg = f'''
 I don't understand what you want me to do :(. You can ask me to remind you things using the following syntax:\n
@@ -45,7 +52,9 @@ def post_reminder(who, what, user, channel_id, event_id):
             event_list.remove(event)
 
     if is_event_recurring(what):
-        schedule_event(who, what, user, channel_id, event_id=event_id)
+        schedule_event(who, what, user, channel_id, event_id=event_id, from_db=True)
+    else:
+        reminders.delete_one({'event_id': event_id})
 
 
 def get_reminders(msg, user, channel_id):
@@ -54,7 +63,12 @@ def get_reminders(msg, user, channel_id):
         return
     result = ''
     for event in event_list:
-        result += f"*{event['id']}* remind *{event['who']}* to {event['msg']} \n"
+        time_for_next_event = parse_next_event_from_string(event['msg'])
+        result += f"*{event['id']}* " \
+                  f"remind *{event['who']}* " \
+                  f"to {event['msg']} " \
+                  f"[next execution: *{datetime.datetime.fromtimestamp(time_for_next_event)}*] " \
+                  f"added by *{event['user']}*\n"
 
     bot.send_message(result, channel_id)
 
@@ -64,13 +78,14 @@ def delete_reminder(msg, user, channel_id):
         if str(msg).strip() == str(event['id']):
             event['scheduler'].cancel(event['event'])
             event_list.remove(event)
+            reminders.delete_one({'event_id': event['id']})
             bot.send_message(f"Deleted event {event['id']}", channel_id)
             return
 
     bot.send_message(f"Can't find event {event['id']}", channel_id)
 
 
-def schedule_event(who, what, user, channel_id, event_id=None):
+def schedule_event(who, what, user, channel_id, event_id=None, from_db=False):
     scheduler = sched.scheduler(time.time, time.sleep)
     if not event_id:
         event_id = uuid.uuid4()
@@ -87,15 +102,29 @@ def schedule_event(who, what, user, channel_id, event_id=None):
             'scheduler': scheduler
         }
     )
+
     if who.strip() != 'me':
         person = who
     else:
         person = f'@{user}'
 
-    bot.send_message(
-        f"I'll remind {person} to {what} at *{datetime.datetime.fromtimestamp(time_for_next_event)}*. Event _id_ is *{event_id}*",
-        channel_id
-    )
+    if not from_db:
+        reminders.insert_one(
+            {
+                'who': who,
+                'what': what,
+                'user': user,
+                'channel_id': channel_id,
+                'event_id': event_id,
+            }
+        )
+
+        bot.send_message(
+            f"I'll remind {person} to {what} at "
+            f"*{datetime.datetime.fromtimestamp(time_for_next_event)}*. "
+            f"Event _id_ is *{event_id}*",
+            channel_id
+        )
 
     scheduler.run()
 
@@ -126,4 +155,15 @@ bot.add_dm_handler(['delete', 'remove', 'cancel'], delete_reminder)
 bot.add_dm_handler(['help', ], get_help)
 bot.unknow_command = [error_msg, ]
 
+reminders_cursor = reminders.find({})
+for reminder in reminders_cursor:
+    Thread(target=schedule_event, args=(reminder['who'],
+                                        reminder['what'],
+                                        reminder['user'],
+                                        reminder['channel_id'],
+                                        reminder['event_id'],
+                                        True
+                                        )).start()
+
+print('starting bot...')
 bot.run()

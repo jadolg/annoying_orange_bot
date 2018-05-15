@@ -3,6 +3,7 @@ chardet==3.0.4
 future==0.16.0
 idna==2.6
 parsedatetime==2.4
+pymongo==3.6.1
 python-dateutil==2.7.3
 recurrent==0.2.5
 requests==2.18.4
