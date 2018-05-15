@@ -1,0 +1,12 @@
+certifi==2017.7.27.1
+chardet==3.0.4
+future==0.16.0
+idna==2.6
+parsedatetime==2.4
+python-dateutil==2.7.3
+recurrent==0.2.5
+requests==2.18.4
+rocketchat-API==0.6.10
+RocketChatAPIBot==0.1.1
+six==1.11.0
+urllib3==1.22
