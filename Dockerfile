@@ -4,13 +4,13 @@ MAINTAINER Akiel <akiel@aleph.engineering>
 
 LABEL version='1.0'
 LABEL description='AnnoyingOrangeBot'
-
-ADD libs /home/libs
-COPY requirements.txt /home/
-RUN pip3 install --no-index --find-links="/home/libs" -r /home/requirements.txt
+RUN apk update && apk add tzdata \
+     && cp -r -f /usr/share/zoneinfo/Cuba /etc/localtime
+ADD requirements.txt /home/
+WORKDIR /home/
+RUN pip3 install -r requirements.txt
 
 ADD . /home/
 
-WORKDIR /home/
 
 ENTRYPOINT ["/usr/local/bin/python", "main.py"]
