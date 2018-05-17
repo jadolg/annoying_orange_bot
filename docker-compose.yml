@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  bot:
+    build: .
+    container_name: annoying-orange-bot
+    image: annoying-orange-bot
+    restart: unless-stopped
+    environment:
+      - BOTNAME=annoyingorange
+      - BOTPASSWORD=password
+      - SERVERURL=http://rocket:3000
+      - DBHOST=mongo
+      - DBPORT=27017
+
+  mongo:
+    image: mongo:3.3
+    restart: unless-stopped
+    command: mongod --smallfiles
+    volumes:
+      - ./data/db:/data/db
