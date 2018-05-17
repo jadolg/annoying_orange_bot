@@ -1,6 +1,6 @@
 def get_users_str(who, user):
     users = [name for name in who.split() if name.startswith('@')]
-    if ' me ' in who:
+    if ' me ' in who or who.startswith('me '):
         users.append(f'@{user}')
     return users
 
