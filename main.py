@@ -135,10 +135,10 @@ def get_help(msg, user, channel_id):
     help_str = f"""
     Hi @{user} I'm @{bot_name} and I was built to remind you of important things.
     Here is how you can use me (by example because my maker is lazy as hell):
-    - @{bot_name} remind @{user} *to* buy milk *on* Wednesdays at 4 pm
-    - @{bot_name} remind @{user} *to* drink water *every* 20 minutes
-    - @{bot_name} remind me *to* check my food *in* the microwave in 5 minutes
-    - @{bot_name} remind @{user} *to* get ready for TGIF on Fridays at 1 pm
+    - @{bot_name} remind @{user} to buy milk on Wednesdays at 4 pm
+    - @{bot_name} remind @{user} to drink water every 20 minutes
+    - @{bot_name} remind me to check my food in the microwave in 5 minutes
+    - @{bot_name} remind @{user} to get ready for TGIF on Fridays at 1 pm
     
     Want to know how many reminders I have scheduled?
     - @{bot_name} list
