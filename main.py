@@ -60,11 +60,15 @@ def post_reminder(who, what, user, channel_id, event_id):
 
 
 def get_reminders(msg, user, channel_id):
-    if not event_list:
+    events = event_list
+    if msg != 'all':
+        events = [event for event in event_list if event['user'] == user]
+
+    if not events:
         bot.send_message('There are no scheduled events', channel_id)
         return
     result = ''
-    for event in event_list:
+    for event in events:
         time_for_next_event = parse_next_event_from_string(event['msg'])
         result += f" - *{event['id']}* " \
                   f"remind {event['who']} " \
@@ -140,8 +144,11 @@ def get_help(msg, user, channel_id):
     - @{bot_name} remind me to check my food in the microwave in 5 minutes
     - @{bot_name} remind @{user} to get ready for TGIF on Fridays at 1 pm
     
-    Want to know how many reminders I have scheduled?
+    Want to list the reminders I have scheduled?
     - @{bot_name} list
+    
+    Want to list all reminders?
+    - @{bot_name} list all
     
     Want to finally cancel that annoying reminder?
     - @{bot_name} cancel _id_
