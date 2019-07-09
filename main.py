@@ -176,7 +176,8 @@ async def handle_message(request):
     if msg.startswith('@annoyingorange') and post.get('user_name') != 'annoyingorange':
         msg = msg.lstrip('@annoyingorange').strip()
         if msg.startswith('remind'):
-            add_reminder(post.get('text'), post.get('user_name'), post.get('channel_id'))
+            msg = msg.lstrip('remind').strip()
+            add_reminder(msg, post.get('user_name'), post.get('channel_id'))
         elif msg.startswith('events') or msg.startswith('events') or msg.startswith('list') or msg.startswith(
                 'reminders'):
             get_reminders(post.get('text'), post.get('user_name'), post.get('channel_id'))
