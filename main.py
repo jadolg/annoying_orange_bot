@@ -4,9 +4,9 @@ import time
 import uuid
 from threading import Thread
 
-from RocketChatBot import RocketChatBot
 from future.backports import datetime
 from pymongo import MongoClient
+from rocketchat_API.rocketchat import RocketChat
 
 from dateparser import parse_next_event_from_string, is_event_recurring
 from str_util import get_users_str, get_when
@@ -21,7 +21,7 @@ event_list = []
 
 SCHEDULER_EVENTS_PRIORITY = 1
 
-bot = RocketChatBot(bot_name, bot_password, server_url)
+rocket = RocketChat(user=bot_name, password=bot_password, server_url=server_url)
 
 db_client = MongoClient(db_host, db_port)
 reminders = db_client['events'].reminders
@@ -38,16 +38,16 @@ def add_reminder(msg, user, channel_id):
         schedule_event(who, what, user, channel_id)
     except Exception as e:
         print(e)
-        bot.send_message(error_msg, channel_id)
+        rocket.chat_post_message(error_msg, channel_id)
 
 
 def post_reminder(who, what, user, channel_id, event_id):
     users = get_users_str(who=who, user=user)
     what_without_when = str(what).replace(get_when(what), '')
     if not users:
-        bot.send_message(f'{user} wants you @all to remember to {what_without_when}', channel_id)
+        rocket.chat_post_message(f'{user} wants you @all to remember to {what_without_when}', channel_id)
     else:
-        bot.send_message(f'{" ".join(users)}, {user} wants you to remember to {what_without_when}', channel_id)
+        rocket.chat_post_message(f'{" ".join(users)}, {user} wants you to remember to {what_without_when}', channel_id)
 
     for event in event_list:
         if str(event_id) == str(event['id']):
@@ -61,34 +61,34 @@ def post_reminder(who, what, user, channel_id, event_id):
 
 def get_reminders(msg, user, channel_id):
     events = event_list
-    if msg != 'all':
+    if 'all' not in msg:
         events = [event for event in event_list if event['user'] == user]
 
     if not events:
-        bot.send_message('There are no scheduled events', channel_id)
+        rocket.chat_post_message('There are no scheduled events', channel_id)
         return
     result = ''
     for event in events:
         time_for_next_event = parse_next_event_from_string(event['msg'])
         result += f" - *{event['id']}* " \
-                  f"remind {event['who']} " \
-                  f"to {event['msg']} " \
-                  f"[next execution: *{datetime.datetime.fromtimestamp(time_for_next_event)}*] " \
-                  f"added by *{event['user']}*\n"
+            f"remind {event['who']} " \
+            f"to {event['msg']} " \
+            f"[next execution: *{datetime.datetime.fromtimestamp(time_for_next_event)}*] " \
+            f"added by *{event['user']}*\n"
 
-    bot.send_message(result, channel_id)
+    rocket.chat_post_message(result, channel_id)
 
 
 def delete_reminder(msg, user, channel_id):
     for event in event_list:
-        if str(msg).strip() == str(event['id']):
+        if str(event['id']) in msg:
             event['scheduler'].cancel(event['event'])
             event_list.remove(event)
             reminders.delete_one({'event_id': event['id']})
-            bot.send_message(f"Deleted event {event['id']}", channel_id)
+            rocket.chat_post_message(f"Deleted event {event['id']}", channel_id)
             return
 
-    bot.send_message(f"Can't find event {event['id']}", channel_id)
+    rocket.chat_post_message(f"Can't find event", channel_id)
 
 
 def schedule_event(who, what, user, channel_id, event_id=None, from_db=False):
@@ -125,14 +125,14 @@ def schedule_event(who, what, user, channel_id, event_id=None, from_db=False):
             }
         )
 
-        bot.send_message(
+        rocket.chat_post_message(
             f"I'll remind {person} to {what} at "
             f"*{datetime.datetime.fromtimestamp(time_for_next_event)}*. "
             f"Event _id_ is *{event_id}*",
             channel_id
         )
 
-    scheduler.run()
+    Thread(target=scheduler.run).start()
 
 
 def get_help(msg, user, channel_id):
@@ -155,14 +155,8 @@ def get_help(msg, user, channel_id):
     where _id_ is the id of the event you get when running `@{bot_name} list` 
     """
 
-    bot.send_message(help_str, channel_id)
+    rocket.chat_post_message(help_str, channel_id)
 
-
-bot.add_dm_handler(['remind', ], add_reminder)
-bot.add_dm_handler(['list', 'events', 'reminders', 'get reminders', ], get_reminders)
-bot.add_dm_handler(['delete', 'remove', 'cancel'], delete_reminder)
-bot.add_dm_handler(['help', ], get_help)
-bot.unknow_command = [error_msg, ]
 
 reminders_cursor = reminders.find({})
 for reminder in reminders_cursor:
@@ -174,5 +168,30 @@ for reminder in reminders_cursor:
                                         True
                                         )).start()
 
-print('starting bot...')
-bot.run()
+from aiohttp import web
+
+
+async def handle_message(request):
+    post = await request.json()
+    msg = post.get('text')
+    if msg.startswith('@annoyingorange'):
+        msg = msg.lstrip('@annoyingorange').strip()
+        if msg.startswith('remind'):
+            add_reminder(post.get('text'), post.get('user_name'), post.get('channel_id'))
+        elif msg.startswith('events') or msg.startswith('events') or msg.startswith('list') or msg.startswith(
+                'reminders'):
+            get_reminders(post.get('text'), post.get('user_name'), post.get('channel_id'))
+        elif msg.startswith('delete') or msg.startswith('remove') or msg.startswith('cancel'):
+            delete_reminder(post.get('text'), post.get('user_name'), post.get('channel_id'))
+        elif msg.startswith('help'):
+            get_help(post.get('text'), post.get('user_name'), post.get('channel_id'))
+        else:
+            rocket.chat_post_message('wait what?', post.get('channel_id'))
+        print(post)
+    return web.Response(text='ok')
+
+
+app = web.Application()
+app.add_routes([web.post('/hook', handle_message)])
+
+web.run_app(app, host='0.0.0.0', port=5000)
