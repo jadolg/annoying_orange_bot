@@ -4,6 +4,7 @@ import time
 import uuid
 from threading import Thread
 
+from aiohttp import web
 from future.backports import datetime
 from pymongo import MongoClient
 from rocketchat_API.rocketchat import RocketChat
@@ -168,8 +169,6 @@ for reminder in reminders_cursor:
                                         True
                                         )).start()
 
-from aiohttp import web
-
 
 async def handle_message(request):
     post = await request.json()
@@ -191,7 +190,12 @@ async def handle_message(request):
     return web.Response(text='ok')
 
 
+async def handle_healthcheck(request):
+    return web.Response(text='alive')
+
+
 app = web.Application()
 app.add_routes([web.post('/hook', handle_message)])
+app.add_routes([web.get('/healthcheck', handle_healthcheck)])
 
 web.run_app(app, host='0.0.0.0', port=5000)
