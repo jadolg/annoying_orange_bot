@@ -173,7 +173,7 @@ for reminder in reminders_cursor:
 async def handle_message(request):
     post = await request.json()
     msg = post.get('text')
-    if msg.startswith('@annoyingorange'):
+    if msg.startswith('@annoyingorange') and post.get('user_name') != 'annoyingorange':
         msg = msg.lstrip('@annoyingorange').strip()
         if msg.startswith('remind'):
             add_reminder(post.get('text'), post.get('user_name'), post.get('channel_id'))
