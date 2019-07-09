@@ -12,6 +12,8 @@ services:
       - SERVERURL=http://rocket:3000
       - DBHOST=mongo
       - DBPORT=27017
+    ports:
+      - 5000:5000
 
   mongo:
     image: mongo:3.3
