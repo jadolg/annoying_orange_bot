@@ -9,5 +9,5 @@ recurrent==0.2.5
 requests==2.18.4
 rocketchat-API==0.6.26
 six==1.11.0
-urllib3==1.22
+urllib3==1.24.2
 aiohttp==3.5.4
