@@ -10,4 +10,4 @@ requests==2.23.0
 rocketchat-API==1.2.2
 six==1.14.0
 urllib3==1.25.8
-aiohttp==3.6.2
+aiohttp==3.7.4
